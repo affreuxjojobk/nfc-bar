@@ -1,0 +1,25 @@
+﻿id,nom,catégorie,prix,stock,ventes,stock_restant,points_necessaires,remise_manuelle
+1,NICOLAS FEUILLATTE,Bouteilles,80,0,0,0,80,0
+2,JB,Bouteilles,90,0,0,0,90,0
+3,ST JAMES 40°,Bouteilles,90,60,0,60,90,0
+4,POLIAKOV,Bouteilles,90,0,0,0,90,0
+5,MOET BRUT,Bouteilles,100,0,0,0,100,0
+6,DAMOISEAU 50°,Bouteilles,100,0,0,0,100,0
+7,CLEMENT VIEUX,Bouteilles,130,0,0,0,130,0
+8,JACK DANIELS,Bouteilles,130,0,0,0,130,0
+9,MOET ICE,Bouteilles,150,0,0,0,150,0
+10,HENNESSY,Bouteilles,150,0,0,0,150,0
+11,CIROC / BELVEDERE,Bouteilles,150,0,0,0,150,0
+12,Goyave,Jus à la verse,5,0,0,0,5,0
+13,Maracudja,Jus à la verse,5,0,0,0,5,0
+14,Ananas,Jus à la verse,5,0,0,0,5,0
+15,Energy Drink,Jus à la verse,5,0,0,0,5,0
+16,Despé Original,Bières,7,60,0,60,7,0
+17,Despé Red,Bières,7,60,0,60,7,0
+18,Ti Punch,Alcool à la verse,8,0,0,0,8,0
+19,Hard (vodka whisky rhum),Alcool à la verse,10,0,0,0,10,0
+20,Hard Sup (Clement vieux, Jack Daniels, Henessy),Alcool à la verse,12,0,0,0,12,0
+21,Conso Jus,Conso avec l'entrée,0,0,0,0,0,0
+22,Conso Alcool,Conso avec l'entrée,0,0,0,0,0,0
+23,Plat (Riz Poulet),Restauration,12,60,0,60,12,0
+24,Goodies,Goodies,2,50,0,50,10,0

@@ -1,0 +1,51 @@
+import React from "react";
+import Papa from "papaparse";
+import { db } from "./firebase/firebaseConfig"; // on garde le chemin relatif à src
+import { collection, addDoc } from "./firebase/firestoreService";
+
+const ImportCSV = () => {
+  const handleCSVUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim().replace(/^\uFEFF/, ""),
+      complete: async (results) => {
+        const data = results.data;
+
+        for (const ligne of data) {
+          try {
+            await addDoc(collection(db, "products"), {
+              Produit: String(ligne["Produit"]),
+              Catégorie: ligne["Catégorie"],
+              Prix: Number(ligne["Prix"]),
+              Stock: Number(ligne["Stock"]),
+              Ventes: Number(ligne["Ventes"]),
+              "Stock restant": Number(ligne["Stock restant"]),
+            });
+          } catch (err) {
+            console.error("❌ Erreur insertion :", err, ligne);
+          }
+        }
+
+        alert("✅ Import terminé !");
+      },
+    });
+  };
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">📤 Importer mon stock</h2>
+      <input
+        type="file"
+        accept=".csv"
+        onChange={handleCSVUpload}
+        className="border p-2 rounded"
+      />
+    </div>
+  );
+};
+
+export default ImportCSV;
