@@ -1,284 +1,277 @@
+// src/BarInterface.jsx
 import React, { useState, useEffect } from 'react';
-import Papa from 'papaparse';
+import {
+  db,
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc
+} from './firebase/firebaseConfig';  // Ici on exporte tous depuis firebaseConfig
 
 const BarInterface = () => {
   const [products, setProducts] = useState([]);
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', category: '' });
+  const [selectedProducts, setSelected] = useState([]); // {id,name,price,quantity,discount,isOffered,loyaltyPoints,stock}
   const [salesHistory, setSalesHistory] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [userPoints, setUserPoints] = useState(0); // Points utilisateur
-  const [nfcData, setNfcData] = useState(null);
-  const [showHistory, setShowHistory] = useState(false); // Affichage de l'historique des ventes
-  const [showOffered, setShowOffered] = useState(false); // Affichage des produits offerts
-  const [showDiscounted, setShowDiscounted] = useState(false); // Affichage des produits avec remise
-  const [showLoyaltyPoints, setShowLoyaltyPoints] = useState(false); // Affichage des produits avec points de fidélité
+  const [showHistory, setShowHistory] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
 
+  // 1️⃣ Chargement temps réel + tri catégories
   useEffect(() => {
-    const storedProducts = localStorage.getItem('products');
-    if (storedProducts) {
-      setProducts(JSON.parse(storedProducts));
-    }
-    const storedSalesHistory = localStorage.getItem('salesHistory');
-    if (storedSalesHistory) {
-      setSalesHistory(JSON.parse(storedSalesHistory));
-    }
-    loadCSVProducts();
-    initNFC();
+    const ref = collection(db, 'products');
+    const unsub = onSnapshot(ref, snap => {
+      const data = snap.docs.map(d => {
+        const o = d.data();
+        return {
+          id: d.id,
+          name: o.nom,
+          price: o.prix,
+          stock: o.stock,
+          discount: o.remise_manuelle,
+          isOffered: o.remise_manuelle > 0,
+          loyaltyPoints: o.points_necessaires,
+          category: o.categorie
+        };
+      });
+      setProducts(data);
+
+      const desiredOrder = [
+        'Bouteilles',
+        'Alcool à la verse (standard)',
+        'Alcool à la verse (Supérieur)',
+        'Bières',
+        'Jus',
+        'Conso avec entrée',
+        'Snacking',
+        'Goodies'
+      ];
+      const cats = [...new Set(data.map(p => p.category))];
+      cats.sort((a,b) => {
+        const ia = desiredOrder.indexOf(a),
+              ib = desiredOrder.indexOf(b);
+        if (ia!==-1||ib!==-1) return (ia===-1?Infinity:ia) - (ib===-1?Infinity:ib);
+        return a.localeCompare(b);
+      });
+      setCategories(cats);
+    });
+    return () => unsub();
   }, []);
 
-  const loadCSVProducts = () => {
-    Papa.parse('/produits_bar.csv', {
-      download: true,
-      header: true,
-      complete: (result) => {
-        const productsFromCSV = result.data.map(product => ({
-          name: product['Produit'].trim(),
-          price: parseFloat(product['Prix']) || 0,
-          stock: parseInt(product['Stock'], 10) || 0,
-          category: product['Catégorie'],
-          sales: product['Ventes'] ? parseInt(product['Ventes'], 10) : 0,
-          remainingStock: parseInt(product['Stock restant'], 10) || 0,
-          loyaltyPoints: product['Points fidélité'] ? parseInt(product['Points fidélité'], 10) : 0,
-          isOffered: product['Offert'] === 'Oui', // Ajout de la gestion des produits offerts
-          discount: product['Remise'] ? parseFloat(product['Remise']) : 0, // Ajout de la gestion des remises
-        }));
-
-        setProducts(productsFromCSV);
-
-        const uniqueCategories = [...new Set(result.data.map(product => product['Catégorie']))];
-        setCategories(uniqueCategories);
-      },
-      skipEmptyLines: true,
+  // 2️⃣ Ajouter au panier (avec quantité)
+  const selectProduct = p => {
+    if (p.stock <= 0) return alert(`${p.name} en rupture.`);
+    setProducts(ps => ps.map(x =>
+      x.id === p.id
+        ? { ...x, stock: x.stock - 1 }
+        : x
+    ));
+    setSelected(sp => {
+      const exists = sp.find(x => x.id === p.id);
+      if (exists) {
+        return sp.map(x =>
+          x.id === p.id
+            ? { ...x, quantity: x.quantity + 1 }
+            : x
+        );
+      }
+      return [...sp, { ...p, quantity: 1 }];
     });
   };
 
-  const initNFC = () => {
-    if ('NDEFReader' in window) {
-      const reader = new window.NDEFReader();
-      reader.scan().then(() => {
-        reader.onreading = event => {
-          const message = event.message;
-          for (const record of message.records) {
-            if (record.recordType === "text") {
-              const textDecoder = new TextDecoder();
-              const nfcText = textDecoder.decode(record.data);
-              setNfcData(nfcText);
-              alert(`Carte détectée : ${nfcText}`);
-            }
-          }
-        };
-      }).catch(error => {
-        console.error("Erreur NFC:", error);
-      });
-    } else {
-      console.warn("Le navigateur ne supporte pas le NFC Web");
-    }
+  // 3️⃣ Retirer un article du panier (décrémenter la quantité)
+  const decreaseProductQuantity = id => {
+    setSelected(sp => sp.map(x =>
+      x.id === id
+        ? { ...x, quantity: Math.max(x.quantity - 1, 0) } // Décrémenter la quantité, ne pas descendre en dessous de 0
+        : x
+    ));
   };
 
-  useEffect(() => {
-    localStorage.setItem('products', JSON.stringify(products));
-    localStorage.setItem('salesHistory', JSON.stringify(salesHistory));
-  }, [products, salesHistory]);
-
-  const selectProduct = (product) => {
-    if (product.stock > 0) {
-      const updatedProducts = products.map(p =>
-        p.name === product.name ? { ...p, stock: p.stock - 1 } : p
-      );
-      setProducts(updatedProducts);
-      setSelectedProducts([...selectedProducts, product]);
-    } else {
-      alert(`Le produit ${product.name} est en rupture de stock.`);
-    }
-  };
-
-  const removeProduct = (productName) => {
-    const product = selectedProducts.find(p => p.name === productName);
-    setSelectedProducts(selectedProducts.filter(product => product.name !== productName));
-
-    const updatedProducts = products.map(p =>
-      p.name === productName ? { ...p, stock: p.stock + 1 } : p
-    );
-    setProducts(updatedProducts);
-  };
-
-  const calculateTotalSales = () => {
-    return selectedProducts.reduce((total, product) => {
-      let price = product.price;
-      if (product.isOffered) {
-        price = 0; // Produit offert
-      } else if (product.discount > 0) {
-        price -= price * (product.discount / 100); // Appliquer la remise
-      }
-      return total + price;
+  // 4️⃣ Calcul total & points
+  const calculateTotal = () =>
+    selectedProducts.reduce((sum,p) => {
+      let line = p.isOffered ? 0 : p.price * p.quantity;
+      if (!p.isOffered && p.discount > 0) line *= 1 - p.discount / 100;
+      return sum + line;
     }, 0);
+
+  const calculatePoints = () =>
+    selectedProducts.reduce((sum,p) => sum + p.loyaltyPoints * p.quantity, 0);
+
+  // 5️⃣ Valider commande
+  const validateOrder = async () => {
+    const total = calculateTotal();
+    const now   = new Date().toLocaleString();
+    const earned = calculatePoints();
+
+    // Historique local
+    setSalesHistory(sh => [
+      ...sh,
+      ...selectedProducts.map(p => ({
+        product: p.name,
+        quantity: p.quantity,
+        totalSales: p.isOffered ? 0 : p.price * p.quantity, // Total pour chaque produit
+        date: now
+      }))
+    ]);
+    setUserPoints(up => up + earned);
+
+    try {
+      const salesRef = collection(db,'ventes');
+      for (const p of selectedProducts) {
+        // Ajouter en base
+        await addDoc(salesRef, {
+          nom_produit: p.name,
+          quantite: p.quantity,
+          total: p.isOffered ? 0 : p.price * p.quantity,
+          date: now,
+          remise: p.discount,
+          points_gagnes: p.loyaltyPoints * p.quantity
+        });
+        // Mettre à jour stock
+        const prodRef = doc(db, 'products', p.id);
+        await updateDoc(prodRef, { stock: p.stock });
+      }
+      alert(`Vente enregistrée ! Points gagnés : ${earned}`);
+    } catch (e) {
+      console.error(e);
+      alert('Erreur en base');
+    }
+
+    setSelected([]); // vider panier
   };
 
   const confirmSale = () => {
-    const confirmation = window.confirm(`Êtes-vous sûr de vouloir valider cette commande ? Total : ${calculateTotalSales()}€`);
-    if (confirmation) {
-      validateOrder();
-    }
+    if (!selectedProducts.length) return alert('Panier vide');
+    if (window.confirm(`Total ${calculateTotal()}€ ?`)) validateOrder();
   };
 
-  const validateOrder = () => {
-    const total = calculateTotalSales();
-    setSalesHistory([...salesHistory, ...selectedProducts.map(product => ({
-      product: product.name,
-      price: product.price,
-      date: new Date().toLocaleString(),
-      totalSales: total
-    }))]);
-
-    setSelectedProducts([]);
-  };
-
-  const filteredProducts = categoryFilter
-    ? products.filter(product => product.category === categoryFilter)
+  // Filtrage
+  const filtered = categoryFilter
+    ? products.filter(p => p.category === categoryFilter)
     : products;
-
-  const simulateNFCScan = () => {
-    const simulatedData = "Client123"; // Donnée fictive à adapter
-    setNfcData(simulatedData);
-    
-    // Incrémenter les points
-    const pointsGagnes = 10; // Exemple, tu peux ajuster ça selon les règles
-    setUserPoints(prevPoints => prevPoints + pointsGagnes);
-
-    alert(`(Simulation) Carte détectée : ${simulatedData}\nPoints gagnés : ${pointsGagnes}\nTotal des points : ${userPoints + pointsGagnes}`);
-  };
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <h1 className="text-3xl font-bold text-[#F9DC5C] mb-4">Interface du Bar</h1>
-
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setShowHistory(false)}
-          className={`px-3 py-1 rounded-full ${!showHistory ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700 text-white'}`}
-        >
-          Interface du Bar
-        </button>
-        <button
-          onClick={() => setShowHistory(true)}
-          className={`px-3 py-1 rounded-full ${showHistory ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700 text-white'}`}
-        >
-          Historique des Ventes
-        </button>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowHistory(false)}
+            className={`px-3 py-1 rounded-full ${
+              !showHistory ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700'
+            }`}
+          >
+            Bar
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className={`px-3 py-1 rounded-full ${
+              showHistory ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700'
+            }`}
+          >
+            Historique
+          </button>
+        </div>
+        <div>Points fidélité : <b>{userPoints}</b></div>
       </div>
 
       {showHistory ? (
         <div className="bg-white text-black rounded-xl p-4">
-          <h2 className="text-2xl font-bold mb-4">Historique des Ventes</h2>
-          {salesHistory.length === 0 ? (
-            <p>Aucune vente enregistrée.</p>
-          ) : (
-            <ul>
-              {salesHistory.map((sale, index) => (
-                <li key={index} className="flex justify-between items-center mb-2">
-                  <span>{sale.product}</span>
-                  <div className="flex items-center gap-2">
-                    <span>{sale.price}€</span>
-                    <span>{sale.date}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <h2 className="text-2xl mb-4">Historique des ventes</h2>
+          {salesHistory.length === 0
+            ? <p>Aucune vente.</p>
+            : <ul className="space-y-2">
+                {salesHistory.map((s, i) => (
+                  <li key={i} className="flex justify-between text-sm border-b pb-1">
+                    <span>{s.product} x{s.quantity}</span>
+                    <span>{s.totalSales}€</span>
+                    <span className="italic">{s.date}</span>
+                  </li>
+                ))}
+              </ul>
+          }
         </div>
       ) : (
         <>
-          {nfcData && (
-            <div className="mb-4 text-lg text-green-400">
-              Carte détectée : {nfcData}
-            </div>
-          )}
-
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold text-[#F9DC5C]">
-              Points Utilisateur : {userPoints}
-            </h3>
-          </div>
-
-          <div className="mb-6">
-            <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-              onClick={simulateNFCScan}
-            >
-              🎴 Simuler scan NFC / QR Code
-            </button>
-          </div>
-
+          {/* Catégories */}
           <div className="flex flex-wrap gap-2 mb-6">
             <button
-              className={`px-3 py-1 rounded-full ${categoryFilter === '' ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700 text-white'}`}
               onClick={() => setCategoryFilter('')}
+              className={`px-3 py-1 rounded-full ${
+                !categoryFilter ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700'
+              }`}
             >
-              Tout
+              Tous
             </button>
-            {categories.map((category, index) => (
+            {categories.map((cat, i) => (
               <button
-                key={index}
-                className={`px-3 py-1 rounded-full ${categoryFilter === category ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700 text-white'}`}
-                onClick={() => setCategoryFilter(category)}
+                key={i}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-1 rounded-full ${
+                  categoryFilter === cat ? 'bg-[#F9DC5C] text-black' : 'bg-gray-700'
+                }`}
               >
-                {category}
+                {cat}
               </button>
             ))}
           </div>
 
+          {/* Grille produits */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {filteredProducts.map(product => (
-              <div key={product.name} className="bg-gray-800 p-4 rounded-xl">
-                <h3 className="text-lg text-[#F9DC5C]">{product.name}</h3>
-                <p className="text-sm">Prix : {product.price}€</p>
-                <p className="text-sm">Stock : {product.stock}</p>
-                <p className="text-sm">Catégorie : {product.category}</p>
-                <div className="flex gap-2 items-center mt-4">
-                  <button
-                    onClick={() => selectProduct(product)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl"
-                  >
-                    Ajouter
-                  </button>
-                  {product.discount > 0 && (
-                    <span className="text-red-400">Remise: {product.discount}%</span>
-                  )}
-                </div>
+            {filtered.map(p => (
+              <div key={p.id} className="bg-gray-800 p-4 rounded-xl flex flex-col">
+                <h3 className="text-[#F9DC5C] font-semibold">{p.name}</h3>
+                <p className="text-sm">Prix : {p.price}€</p>
+                <p className="text-sm">Stock : {p.stock}</p>
+                {p.loyaltyPoints > 0 && <p className="text-sm text-green-400">+{p.loyaltyPoints} pts</p>}
+                {p.discount > 0 && <p className="text-sm text-red-400">-{p.discount}% remise</p>}
+                <button
+                  onClick={() => selectProduct(p)}
+                  disabled={p.stock <= 0}
+                  className="mt-auto bg-blue-600 hover:bg-blue-700 py-2 rounded-xl"
+                >
+                  {p.stock > 0 ? 'Ajouter' : 'Rupture'}
+                </button>
               </div>
             ))}
           </div>
 
+          {/* Panier */}
           {selectedProducts.length > 0 && (
-            <div className="mt-6 p-4 bg-gray-900 rounded-xl">
-              <h3 className="text-xl text-[#F9DC5C]">Panier</h3>
-              <ul>
-                {selectedProducts.map((product, index) => (
-                  <li key={index} className="flex justify-between items-center mb-2">
-                    <span>{product.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span>{product.price}€</span>
+            <div className="mt-8 bg-gray-900 p-4 rounded-xl">
+              <div className="flex justify-between mb-4">
+                <h2 className="text-xl text-[#F9DC5C]">Panier</h2>
+                <span>Total : {calculateTotal()}€</span>
+              </div>
+              <ul className="space-y-2 mb-4">
+                {selectedProducts.map(p => (
+                  <li key={p.id} className="flex justify-between items-center">
+                    <span>{p.name} x{p.quantity}</span>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => removeProduct(product.name)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-xl"
+                        onClick={() => decreaseProductQuantity(p.id)}
+                        className="bg-red-600 text-white px-2 py-1 rounded-full"
                       >
-                        Retirer
+                        -
+                      </button>
+                      <button
+                        onClick={() => selectProduct(p)}
+                        className="bg-green-600 text-white px-2 py-1 rounded-full"
+                      >
+                        +
                       </button>
                     </div>
                   </li>
                 ))}
               </ul>
-              <div className="flex justify-between mt-4">
-                <span>Total :</span>
-                <span>{calculateTotalSales()}€</span>
-              </div>
               <button
                 onClick={confirmSale}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl mt-4"
+                className="bg-[#F9DC5C] text-black px-6 py-3 rounded-full w-full"
               >
-                Valider la commande
+                Confirmer la commande
               </button>
             </div>
           )}

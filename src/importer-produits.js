@@ -1,58 +1,68 @@
-const admin = require('firebase-admin');
-const fs = require('fs');
 const csv = require('csv-parser');
+const fs = require('fs');
+require('dotenv').config();
+const admin = require('firebase-admin');
+const path = require('path');
+
+const serviceAccount = require('./firebase-key.json');
 
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  databaseURL: 'https://console.firebase.google.com/u/0/project/projet-nfc/firestore/databases/-default-/data/~2Fproducts~2FpRDwaQf5tNUKP9jg0UsX' // Remplace par ton URL Firestore
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const db = admin.firestore();
 
-const importCSVToFirestore = () => {
+const importerProduits = () => {
   const produits = [];
 
-  fs.createReadStream('produits.csv')  // Remplace par le chemin vers ton fichier CSV
+  fs.createReadStream('produits.csv')
     .pipe(csv())
     .on('data', (row) => {
-      // Nettoyer les clés (propriétés de l'objet) et les valeurs
-      const cleanedRow = {};
-      Object.keys(row).forEach(key => {
-        // Enlever les espaces avant et après les clés et les valeurs
-        const cleanedKey = key.trim();
-        const cleanedValue = (row[key] || '').trim();
-        cleanedRow[cleanedKey] = cleanedValue;
-      });
+      const produit = {
+        nom: row.nom?.trim(),
+        categorie: row.categorie?.trim(),
+        prix: parseFloat(row.prix) || 0,
+        stock: parseInt(row.stock) || 0,
+        ventes: parseInt(row.ventes) || 0,
+        stock_restant: parseInt(row.stock_restant) || 0,
+        points_necessaires: parseInt(row.points_necessaires) || 0,
+        remise_manuelle: parseFloat(row.remise_manuelle) || 0,
+      };
 
-      console.log('Ligne lue:', cleanedRow); // Afficher la ligne nettoyée
-      console.log('ID du produit:', cleanedRow.id); // Afficher l'ID nettoyé
-      
-      if (!cleanedRow.id) {
-        console.log(`ID manquant pour le produit: ${cleanedRow.nom}`); // Si l'ID est manquant
+      if (produit.nom) {
+        produits.push(produit);
+      } else {
+        console.warn(`⛔ Produit invalide (nom manquant) : ${JSON.stringify(produit)}`);
       }
-      
-      produits.push(cleanedRow);  // Ajouter la ligne nettoyée au tableau produits
     })
-    .on('end', () => {
-      produits.forEach(async (produit) => {
-        if (produit.id) {
-          const produitRef = db.collection('produits').doc(produit.id);
-          console.log(`Insertion du produit avec l'ID: ${produit.id}`); // Log de l'insertion
-          await produitRef.set({
-            nom: produit.nom,
-            catégorie: produit.catégorie,
-            prix: parseFloat(produit.prix),
-            stock: parseInt(produit.stock),
-            ventes: parseInt(produit.ventes),
-            stock_restant: parseInt(produit.stock_restant),
-            points_necessaires: parseInt(produit.points_necessaires),
-            remise_manuelle: parseFloat(produit.remise_manuelle)
-          });
-        }
-      });
+    .on('end', async () => {
+      try {
+        const batch = db.batch();
 
-      console.log('Importation terminée');
+        produits.forEach(produit => {
+          // Créer un ID unique pour chaque produit basé sur le nom
+          const produitId = produit.nom
+            .toLowerCase()
+            .normalize('NFD') // Enlève les accents
+            .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
+            .replace(/\s+/g, '_') // Remplace les espaces par des underscores
+            .replace(/[^a-z0-9_]/g, ''); // Supprime les caractères spéciaux
+
+          // Référence vers le document du produit dans la collection 'products'
+          const produitRef = db.collection('products').doc(produitId);
+
+          // Ajouter le produit à la collection avec un merge pour éviter de dupliquer les produits existants
+          batch.set(produitRef, produit, { merge: true });
+        });
+
+        // Commencer l'opération de batch commit
+        await batch.commit();
+        console.log('✅ Produits importés avec succès dans Firestore !');
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'importation :', error);
+      }
     });
 };
 
-importCSVToFirestore();
+// Appeler la fonction pour importer les produits
+importerProduits();
