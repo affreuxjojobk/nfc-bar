@@ -7,7 +7,7 @@ import {
   addDoc,
   updateDoc,
   doc
-} from './firebase/firebaseConfig';  // Ici on exporte tous depuis firebaseConfig
+} from '../firebase/firebaseConfig';  // Ici on exporte tous depuis firebaseConfig
 
 const BarInterface = () => {
   const [products, setProducts] = useState([]);
@@ -100,48 +100,49 @@ const BarInterface = () => {
   const calculatePoints = () =>
     selectedProducts.reduce((sum,p) => sum + p.loyaltyPoints * p.quantity, 0);
 
-  // 5️⃣ Valider commande
-  const validateOrder = async () => {
-    const total = calculateTotal();
-    const now   = new Date().toLocaleString();
-    const earned = calculatePoints();
+const validateOrder = async () => {
+  const total = calculateTotal();
+  const now = new Date().toLocaleString();
+  const earned = calculatePoints();
 
-    // Historique local
-    setSalesHistory(sh => [
-      ...sh,
-      ...selectedProducts.map(p => ({
-        product: p.name,
-        quantity: p.quantity,
-        totalSales: p.isOffered ? 0 : p.price * p.quantity, // Total pour chaque produit
-        date: now
-      }))
-    ]);
-    setUserPoints(up => up + earned);
+  // Historique local
+  setSalesHistory(sh => [
+    ...sh,
+    ...selectedProducts.map(p => ({
+      product: p.name,
+      quantity: p.quantity,
+      totalSales: p.isOffered ? 0 : p.price * p.quantity,
+      date: now,
+    }))
+  ]);
+  setUserPoints(up => up + earned);
 
-    try {
-      const salesRef = collection(db,'ventes');
-      for (const p of selectedProducts) {
-        // Ajouter en base
-        await addDoc(salesRef, {
-          nom_produit: p.name,
-          quantite: p.quantity,
-          total: p.isOffered ? 0 : p.price * p.quantity,
-          date: now,
-          remise: p.discount,
-          points_gagnes: p.loyaltyPoints * p.quantity
-        });
-        // Mettre à jour stock
-        const prodRef = doc(db, 'products', p.id);
-        await updateDoc(prodRef, { stock: p.stock });
-      }
-      alert(`Vente enregistrée ! Points gagnés : ${earned}`);
-    } catch (e) {
-      console.error(e);
-      alert('Erreur en base');
+  try {
+    const salesRef = collection(db, 'ventes');
+    for (const p of selectedProducts) {
+      // Ajouter la vente dans la base de données
+      await addDoc(salesRef, {
+        nom_produit: p.name,
+        quantite: p.quantity,
+        total: p.isOffered ? 0 : p.price * p.quantity,
+        date: now,
+        remise: p.discount,
+        points_gagnes: p.loyaltyPoints * p.quantity,
+      });
+
+      // Mettre à jour le stock du produit dans Firestore
+      const prodRef = doc(db, 'products', p.id);
+      await updateDoc(prodRef, { stock: p.stock - p.quantity }); // Décrémenter le stock en fonction de la quantité vendue
     }
+    alert(`Vente enregistrée ! Points gagnés : ${earned}`);
+  } catch (e) {
+    console.error(e);
+    alert('Erreur en base');
+  }
 
-    setSelected([]); // vider panier
-  };
+  setSelected([]); // vider panier
+};
+
 
   const confirmSale = () => {
     if (!selectedProducts.length) return alert('Panier vide');

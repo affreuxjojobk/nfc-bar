@@ -1,18 +1,17 @@
-// src/helpers/saveSalesToFirestore.js
 import { addSale } from '../firebase/firestoreService';
 
 const saveSalesToFirestore = async (items, clientEmail, remise, points_gagnes) => {
   const salesData = items.map(item => ({
-    product: item.name,        // Nom du produit
-    price: item.price,         // Prix unitaire
-    quantity: item.qty,        // Quantité achetée
+    nom_produit: item.name,  // Optionnel : cohérence avec Firestore
+    prix: item.price,
+    quantite: item.qty,
   }));
 
-  const date = new Date(); // Date actuelle de la vente
+  const date = new Date();
 
   try {
     await addSale({
-      items: salesData,
+      produits: salesData,    // ✅ Corrigé ici
       date,
       remise,
       points_gagnes,

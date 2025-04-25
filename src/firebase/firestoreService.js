@@ -1,4 +1,3 @@
-// src/firebase/firestoreService.js
 import {
   collection,
   addDoc,
@@ -8,68 +7,50 @@ import {
   updateDoc,
   doc,
   Timestamp,
-  orderBy
+  orderBy,
+  increment
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 // Références de collections
-const salesCollection = collection(db, 'Sales');
+const salesCollection = collection(db, 'sales');
 const clientsCollection = collection(db, 'clients');
 const productsCollection = collection(db, 'products');
 
-// ✅ Ajouter une vente
-export const addSale = async ({ product, price, quantity, total, date, remise, points_gagnes, clientEmail }) => {
+// 📊 Ajouter une vente
+export const addSale = async ({ produits, total, date, remise = 0, points_gagnes = 0, clientEmail }) => {
   try {
-    if (!product || !price || !quantity || !total) {
-      throw new Error("Champs manquants pour l'ajout d'une vente");
+    // Vérifier si les paramètres requis sont présents et valides
+    if (!Array.isArray(produits) || produits.length === 0) {
+      throw new Error("Les produits sont requis et doivent être un tableau non vide.");
+    }
+    if (typeof total !== 'number' || total <= 0) {
+      throw new Error("Le total doit être un nombre positif.");
     }
 
+    // Créer le payload pour la vente
     const payload = {
-      nom_produit: product,
-      prix: price,
-      quantite: quantity,
+      produits,
       total,
-      date: date instanceof Date ? Timestamp.fromDate(date) : Timestamp.now(),
+      date: date instanceof Date ? Timestamp.fromDate(date) : Timestamp.now(),  // Assurer que la date est correcte
       remise,
       points_gagnes,
-      client_email: clientEmail || null
+      clientEmail,
     };
 
+    // Ajouter la vente dans Firestore
     const docRef = await addDoc(salesCollection, payload);
     console.log('✅ Vente ajoutée avec ID:', docRef.id);
 
-    // Mise à jour automatique des points client
+    // Si des points sont gagnés, mettre à jour les points du client
     if (clientEmail && points_gagnes) {
       await updateClientPoints(clientEmail, points_gagnes, true);
     }
 
-    return docRef.id;
+    return docRef.id; // Retourner l'ID du document ajouté
   } catch (error) {
     console.error('❌ Erreur lors de l’ajout de la vente :', error);
     throw error;
-  }
-};
-
-// 📤 Ajouter plusieurs ventes (ex: panier complet)
-export const saveSalesToFirestore = async (salesList, clientEmail = null) => {
-  try {
-    let totalPoints = 0;
-
-    for (const sale of salesList) {
-      const { product, price, quantity, total, date, remise, points_gagnes } = sale;
-      await addSale({ product, price, quantity, total, date, remise, points_gagnes, clientEmail });
-      if (points_gagnes) {
-        totalPoints += points_gagnes;
-      }
-    }
-
-    if (clientEmail && totalPoints > 0) {
-      await updateClientPoints(clientEmail, totalPoints, true);
-    }
-
-    console.log('✅ Toutes les ventes ont été enregistrées');
-  } catch (error) {
-    console.error('❌ Erreur lors de l’enregistrement des ventes groupées :', error);
   }
 };
 
@@ -84,16 +65,22 @@ export const fetchSales = async () => {
       if (s.date instanceof Timestamp) {
         formattedDate = s.date.toDate().toLocaleString();
       }
+
+      // Si plusieurs produits sont stockés dans une vente
+      const produits = s.produits?.map(p => ({
+        nom: p.nom_produit,
+        prix: p.prix,
+        quantite: p.quantite,
+      })) || [];
+
       return {
         id: d.id,
-        nom_produit: s.nom_produit,
-        prix: s.prix,
-        quantite: s.quantite,
+        produits,
         total: s.total,
         remise: s.remise,
         points_gagnes: s.points_gagnes,
         client_email: s.client_email,
-        formattedDate
+        formattedDate,
       };
     });
   } catch (error) {
@@ -115,10 +102,11 @@ export const updateClientPoints = async (email, points, increment = false) => {
       await updateDoc(clientDoc.ref, { points: newPoints });
       console.log('✅ Points client mis à jour');
     } else {
+      // Si le client n'existe pas, le créer avec les points
       await addDoc(clientsCollection, {
         email,
         points,
-        created_at: Timestamp.now()
+        created_at: Timestamp.now(),
       });
       console.log('✅ Nouveau client créé avec points');
     }
@@ -127,23 +115,12 @@ export const updateClientPoints = async (email, points, increment = false) => {
   }
 };
 
-// 📋 Récupérer la liste des clients
-export const fetchClients = async () => {
-  try {
-    const snapshot = await getDocs(clientsCollection);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (error) {
-    console.error('❌ Erreur récupération clients :', error);
-    return [];
-  }
-};
-
 // 📦 Ajouter un produit
 export const addProduct = async (product) => {
   try {
     const docRef = await addDoc(productsCollection, {
       ...product,
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     });
     console.log('✅ Produit ajouté avec ID:', docRef.id);
     return docRef.id;

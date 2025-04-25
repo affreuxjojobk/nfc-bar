@@ -1,10 +1,11 @@
-// App.js
+// src/App.js
 import React from "react";
-import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
-import BarInterface from "./BarInterface";
+import { BrowserRouter as Router, Routes, Route, useNavigate, Switch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, ClockIcon } from "lucide-react";
+import { SalesProvider } from './context/SalesContext';
+import BarInterface from "./components/BarInterface";
 import SalesHistory from "./components/SalesHistory/SalesHistory";
 
 function NavigationButtons() {
@@ -16,7 +17,16 @@ function NavigationButtons() {
         onClick={() => navigate("/")}
         className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl shadow hover:bg-blue-700 transition"
       >
-        <LayoutDashboard size={20} /> Interface du bar
+        <LayoutDashboard size={20} />
+        Interface du bar
+      </button>
+
+      <button
+        onClick={() => navigate("/ventes")}
+        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl shadow hover:bg-green-700 transition"
+      >
+        <ClockIcon size={20} />
+        Historique des ventes
       </button>
     </div>
   );
@@ -35,7 +45,7 @@ function App() {
         <main className="p-6 pt-24">
           <Routes>
             <Route path="/" element={<BarInterface />} />
-			<Route path="/ventes" element={<SalesHistory />} />
+            <Route path="/ventes" element={<SalesHistory />} />
           </Routes>
         </main>
 
