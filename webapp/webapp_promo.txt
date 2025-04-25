@@ -1,0 +1,128 @@
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { FaLock, FaTicketAlt } from "react-icons/fa";
+import Image from "next/image";
+
+export default function BlackCodeTeaser() {
+  const [accessCode, setAccessCode] = useState("");
+  const [granted, setGranted] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(getTimeRemaining());
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  function getTimeRemaining() {
+    const eventDate = new Date("2025-04-20T23:00:00").getTime();
+    const now = new Date().getTime();
+    const difference = eventDate - now;
+
+    const seconds = Math.floor((difference / 1000) % 60);
+    const minutes = Math.floor((difference / 1000 / 60) % 60);
+    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+
+    return { days, hours, minutes, seconds };
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(getTimeRemaining());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkAccess = () => {
+    if (accessCode.toLowerCase() === "blackcode") {
+      setGranted(true);
+    }
+  };
+
+  const handleVideoEnd = () => {
+    setVideoEnded(true);
+  };
+
+  useEffect(() => {
+    if (videoRef.current && videoEnded) {
+      videoRef.current.play().catch((err) => console.error("Playback error:", err));
+    }
+  }, [videoEnded]);
+
+  const Countdown = () => (
+    <div className="text-center text-sm sm:text-base mt-4 text-red-500">
+      {timeLeft.days}j : {timeLeft.hours}h : {timeLeft.minutes}m : {timeLeft.seconds}s avant BLACK CODE
+    </div>
+  );
+
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-black text-white">
+      <div className="absolute top-4 left-4 z-50">
+        <Image src="/logo.jpg" alt="Beautiful Kreyol Logo" width={80} height={80} />
+      </div>
+
+      {!videoEnded && !granted ? (
+        <div className="w-full h-screen flex items-center justify-center">
+          <video
+            ref={videoRef}
+            id="blackcode-video"
+            className="w-full h-full object-cover"
+            autoPlay
+            muted
+            playsInline
+            onEnded={handleVideoEnd}
+          >
+            <source src="/video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      ) : !granted ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+          className="text-center p-5"
+        >
+          <h1 className="text-4xl font-bold mb-4">DJ W+ BIRTHDAY - BLACK CODE</h1>
+          <p className="text-lg mb-4">
+            L’élite de la nuit se donne rendez-vous pour une expérience unique… Un code. Une seule couleur. Une seule règle : être prêt.
+          </p>
+          <Countdown />
+          <div className="flex gap-2 justify-center mt-6">
+            <Input
+              placeholder="Entrez le code..."
+              className="text-black"
+              value={accessCode}
+              onChange={(e) => setAccessCode(e.target.value)}
+            />
+            <Button onClick={checkAccess} className="bg-red-600 hover:bg-red-800">
+              <FaLock />
+            </Button>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center p-5"
+        >
+          <h2 className="text-3xl font-bold mb-4">Bienvenue dans l'expérience BLACK CODE</h2>
+          <Card className="bg-gray-900 text-white p-6 border border-red-600 max-w-md mx-auto">
+            <CardContent className="flex flex-col items-center">
+              <FaTicketAlt className="text-5xl text-red-600 mb-4" />
+              <p className="text-lg">Préventes disponibles dès maintenant.</p>
+              <Button
+                className="mt-4 bg-red-600 hover:bg-red-800"
+                onClick={() => window.open("https://my.bizouk.com/je-suis-retro", "_blank")}
+              >
+                Réserver ma place
+              </Button>
+              <Countdown />
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+    </div>
+  );
+}

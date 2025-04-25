@@ -1,0 +1,78 @@
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { motion } from 'framer-motion';
+
+export default function BlackCodeTeaser() {
+  const [code, setCode] = useState('');
+  const [accessGranted, setAccessGranted] = useState(false);
+  const [error, setError] = useState(false);
+
+  const handleCheckCode = () => {
+    if (code.trim().toUpperCase() === 'BLACKCODE') {
+      setAccessGranted(true);
+      setError(false);
+    } else {
+      setError(true);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
+      <motion.h1
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="text-4xl font-bold mb-6 text-center"
+      >
+        BLACKCODE : L'Expérience Secrète Commence Ici
+      </motion.h1>
+
+      {!accessGranted ? (
+        <Card className="bg-zinc-900 w-full max-w-md p-4">
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-lg text-center">
+              Entrez le code pour accéder à la mission...
+            </p>
+            <Input
+              placeholder="Entrez le code secret..."
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="bg-zinc-800 text-white border-zinc-700"
+            />
+            {error && (
+              <p className="text-red-500 text-sm text-center">Code incorrect. Réessaye.</p>
+            )}
+            <Button onClick={handleCheckCode} className="bg-purple-600 hover:bg-purple-700">
+              Débloquer l’accès
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="flex flex-col items-center gap-6"
+        >
+          <h2 className="text-2xl font-semibold">Bienvenue dans l’univers BLACKCODE</h2>
+          <div className="w-full max-w-2xl aspect-video">
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ" // remplace par ton lien YouTube
+              title="BLACKCODE Episode 1"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+          <Button className="bg-green-500 hover:bg-green-600">
+            Accéder à la billetterie
+          </Button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
