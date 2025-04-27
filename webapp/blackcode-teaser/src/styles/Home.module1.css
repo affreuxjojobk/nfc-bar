@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+.container {
+  font-family: 'Share Tech Mono', monospace;
+  background-color: #000;
+  color: #00ff00;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2rem;
+}
+
+.hackLogContainer {
+  position: relative;
+  height: 300px;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 600px;
+  font-size: 0.9rem;
+  line-height: 1.2rem;
+}
+
+.hackLogContent {
+  display: flex;
+  flex-direction: column;
+  animation: scrollUp 10s linear forwards;
+}
+
+@keyframes scrollUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+/* Flickering effect */
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    opacity: 1;
+  }
+  20%, 22%, 24%, 55% {
+    opacity: 0;
+  }
+}
+
+.hackLine {
+  animation: flicker 1s infinite;
+}
+
+/* Glitch heading */
+.glitch {
+  font-size: 3rem;
+  color: #0f0;
+  position: relative;
+  animation: glitch 1s infinite;
+}
+
+@keyframes glitch {
+  0% {
+    text-shadow: 2px 2px #ff0000, -2px -2px #00ffff;
+  }
+  20% {
+    text-shadow: -2px -2px #ff0000, 2px 2px #00ffff;
+  }
+  40% {
+    text-shadow: 2px -2px #ff0000, -2px 2px #00ffff;
+  }
+  60% {
+    text-shadow: -2px 2px #ff0000, 2px -2px #00ffff;
+  }
+  80% {
+    text-shadow: 2px 2px #ff0000, -2px -2px #00ffff;
+  }
+  100% {
+    text-shadow: none;
+  }
+}
+
+.flyerContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.flyer {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+}
+
+.welcomeMessage {
+  font-size: 1.5rem;
+  color: #00ff00;
+  margin-bottom: 1rem;
+  animation: fadeIn 2s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.countdown {
+  margin-top: 1rem;
+  font-size: 1.5rem;
+  color: #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.button {
+  margin-top: 2rem;
+  background-color: transparent;
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.button:hover {
+  background-color: #00ff00;
+  color: #000;
+}

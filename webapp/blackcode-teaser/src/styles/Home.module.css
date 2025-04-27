@@ -1,0 +1,122 @@
+.container {
+  min-height: 100vh;
+  background: black;
+  color: #00ff00;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.glitch {
+  font-size: 3rem;
+  font-weight: bold;
+  color: white;
+  position: relative;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.countdown {
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  color: #00ff00;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.hackLogContent {
+  width: 50%;
+  height: 550px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #00ff00;
+  padding: 10px;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.hackLogInner {
+  display: flex;
+  flex-direction: column;
+  animation: scrollHack 8s linear infinite;
+}
+
+.hackLine {
+  white-space: nowrap;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+}
+
+@keyframes scrollHack {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 2s ease forwards;
+}
+
+.ready {
+  font-size: 1.5rem;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.flyer {
+  width: 440px;
+  height: auto;
+  margin-bottom: 1rem;
+  border: 2px solid white;
+  border-radius: 10px;
+}
+
+.button {
+  background: #00ff00;
+  color: black;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  border: none;
+}
+
+.button:hover {
+  background: white;
+  color: black;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+.muteButton {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: white;
+  cursor: pointer;
+  z-index: 1000;
+}
