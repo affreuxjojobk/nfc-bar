@@ -1,0 +1,3 @@
+[submodule "nfc-bar\webapp\blackcode-teaser"]
+    path = nfc-bar\webapp\blackcode-teaser
+    url = https://github.com/affreuxjojobk/nfc-bar/tree/teaser-webapp/webapp/blackcode-teaser.git
